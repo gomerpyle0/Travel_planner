@@ -1,0 +1,54 @@
+import anthropic
+from dotenv import load_dotenv
+
+load_dotenv()
+
+client = anthropic.Anthropic()
+
+
+async def get_weather_info(destination: str, month: str) -> dict:
+    """
+    Get typical weather information for a destination in a given month.
+
+    Args:
+        destination: The destination city or country.
+        month: The month of travel (e.g. "January", "July").
+
+    Returns:
+        A dict with temperature, rainfall, and travel weather advice.
+    """
+    prompt = f"""Provide typical weather information for {destination} in {month}.
+
+Return a JSON object with:
+{{
+  "destination": "{destination}",
+  "month": "{month}",
+  "temperature": {{
+    "average_high_c": number,
+    "average_low_c": number,
+    "average_high_f": number,
+    "average_low_f": number
+  }},
+  "rainfall": {{
+    "average_mm": number,
+    "rainy_days": number,
+    "description": "dry / light / moderate / heavy"
+  }},
+  "humidity": "low / moderate / high",
+  "sunshine_hours_per_day": number,
+  "weather_summary": "1-2 sentence description of typical weather",
+  "what_to_pack": ["item1", "item2", "item3"],
+  "travel_advisory": "Any weather-related travel warnings or tips for this month"
+}}
+
+Respond in plain JSON only, no markdown."""
+
+    response = client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=1024,
+        messages=[{"role": "user", "content": prompt}],
+    )
+
+    import json
+    text = response.content[0].text.strip()
+    return json.loads(text)
