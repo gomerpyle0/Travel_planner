@@ -51,7 +51,7 @@ Return a JSON object with:
   "notes": "Brief explanation of assumptions and money-saving tips"
 }}
 
-All amounts should be in USD. Respond in plain JSON only, no markdown."""
+All amounts should be in INR. Respond in plain JSON only, no markdown."""
 
     response = client.messages.create(
         model="claude-sonnet-4-6",

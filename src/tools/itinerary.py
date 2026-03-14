@@ -64,7 +64,7 @@ Return a JSON object with:
 Respond in plain JSON only, no markdown."""
 
     response = client.messages.create(
-        model="claude-sonnet-4-6",
+        model="claude-opus-4-6",
         max_tokens=4096,
         messages=[{"role": "user", "content": prompt}],
     )
