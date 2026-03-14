@@ -51,8 +51,11 @@ Each tool is a Python function exposed via MCP:
 
 - [ ] **`search_destination(destination: str)`**
   - Returns key info: country, language, currency, timezone, top attractions
-- [ ] **`generate_itinerary(destination: str, days: int, interests: list[str])`**
-  - Returns day-by-day itinerary plan
+- [ ] **`generate_itinerary(source: str, destination: str, days: int, interests: list[str])`**
+  - `source`: traveler's origin city/country (e.g. `"New York"`, `"London"`)
+  - Itinerary accounts for source location: flight routes, travel time from origin,
+    visa requirements based on departure country, and arrival day logistics
+  - Returns day-by-day itinerary plan starting from departure
 - [ ] **`estimate_budget(destination: str, days: int, travel_style: str)`**
   - Returns budget breakdown (accommodation, food, transport, activities)
 - [ ] **`get_weather_info(destination: str, month: str)`**
