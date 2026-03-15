@@ -88,18 +88,18 @@ Each tool is a Python function exposed via MCP:
 - [x] Add a CLI interface: `python src/agent.py "Plan a 5-day trip to Tokyo"`
 
 ### Step 4: Build the MCP Server
-- [ ] Create `src/mcp_server.py` using the `mcp` SDK
-- [ ] Expose the agent as a single `plan_trip` MCP tool so external clients
+- [x] Create `src/mcp_server.py` using the `mcp` SDK
+- [x] Expose the agent as a single `plan_trip` MCP tool so external clients
       (Claude Desktop, other agents) can call it via the MCP protocol
-- [ ] Test the MCP server runs: `python src/mcp_server.py`
+- [x] Test the MCP server runs: `python src/mcp_server.py`
 
 ### Step 5: Write Tests
-- [ ] Test each tool function individually
-- [ ] Test the agent responds correctly to a sample trip planning request
-- [ ] Run tests: `pytest tests/`
+- [x] Test each tool function individually
+- [x] Test the agent responds correctly to a sample trip planning request
+- [x] Run tests: `pytest tests/`
 
 ### Step 6: Polish & Document
-- [ ] Update `README.md` with setup instructions and usage examples
+- [x] Update `README.md` with setup instructions and usage examples
 - [ ] Add error handling (API failures, invalid destinations, missing env vars)
 - [ ] Add input validation to all tools
 
