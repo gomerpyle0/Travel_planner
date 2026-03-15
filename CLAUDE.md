@@ -25,10 +25,29 @@ Travel_planner/
 │   │   ├── itinerary.py   # Itinerary generation tool
 │   │   ├── budget.py      # Budget estimation tool
 │   │   └── weather.py     # Weather info tool
-│   └── mcp_server.py      # MCP server exposing tools
+│   └── mcp_server.py      # MCP server exposing the agent to external clients
 └── tests/
     ├── __init__.py
     └── test_agent.py
+```
+
+### Design: Agent-First, MCP as External Interface
+
+The agent (`agent.py`) is the core — it owns the tools and the agentic loop.
+The MCP server (`mcp_server.py`) wraps the agent and exposes it to the outside
+world (Claude Desktop, other MCP clients) as a single `plan_trip` tool.
+
+```
+External client (Claude Desktop, etc.)
+        │  MCP protocol
+        ▼
+  mcp_server.py          ← exposes agent to the outside world
+        │  calls
+        ▼
+    agent.py             ← agentic loop + tool orchestration
+        │  calls
+        ▼
+  tools/*.py             ← individual travel planning tools
 ```
 
 ---
@@ -61,18 +80,18 @@ Each tool is a Python function exposed via MCP:
 - [ ] **`get_weather_info(destination: str, month: str)`**
   - Returns typical weather for travel planning
 
-### Step 3: Build the MCP Server
-- [ ] Create `src/mcp_server.py` using the `mcp` SDK
-- [ ] Register all tools from Step 2 as MCP tool handlers
-- [ ] Add proper input schemas (JSON Schema) for each tool
-- [ ] Test the MCP server runs: `python src/mcp_server.py`
+### Step 3: Build the Claude Agent
+- [x] Create `src/agent.py` using the `anthropic` SDK
+- [x] Configure the agent with a system prompt describing its role as a travel planner
+- [x] Implement an agentic loop: send messages → handle tool calls → return results
+- [x] Wire the agent directly to the tools in `src/tools/`
+- [x] Add a CLI interface: `python src/agent.py "Plan a 5-day trip to Tokyo"`
 
-### Step 4: Build the Claude Agent
-- [ ] Create `src/agent.py` using the `anthropic` SDK
-- [ ] Configure the agent with a system prompt describing its role as a travel planner
-- [ ] Implement an agentic loop: send messages → handle tool calls → return results
-- [ ] Wire the agent to use the tools defined in the MCP server
-- [ ] Add a CLI interface: `python src/agent.py "Plan a 5-day trip to Tokyo"`
+### Step 4: Build the MCP Server
+- [ ] Create `src/mcp_server.py` using the `mcp` SDK
+- [ ] Expose the agent as a single `plan_trip` MCP tool so external clients
+      (Claude Desktop, other agents) can call it via the MCP protocol
+- [ ] Test the MCP server runs: `python src/mcp_server.py`
 
 ### Step 5: Write Tests
 - [ ] Test each tool function individually
@@ -107,11 +126,11 @@ pytest tests/
 
 ## Key Design Decisions
 
-- **MCP over direct tool calls**: Using MCP makes the tools reusable by other
-  agents and Claude Desktop.
+- **Agent-first**: `agent.py` is the core — it owns tools and the agentic loop.
+  MCP wraps the agent to expose it externally, not the other way around.
 - **Async-first**: All tools use `async def` for non-blocking HTTP calls.
-- **Claude model**: Use `claude-sonnet-4-6` for the best balance of capability
-  and speed.
+- **Claude model**: `claude-opus-4-6` with adaptive thinking for the agent
+  (best capability); `claude-sonnet-4-6` for individual tool calls.
 
 ---
 
