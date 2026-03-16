@@ -8,12 +8,7 @@ from tools.destination import search_destination
 from tools.itinerary import generate_itinerary
 from tools.budget import estimate_budget
 from tools.weather import get_weather_info
-from llm_client import (
-    PROVIDER,
-    get_async_client,
-    OLLAMA_MODEL,
-    ANTHROPIC_AGENT_MODEL,
-)
+from llm_client import get_async_client, GEMINI_MODEL
 
 load_dotenv()
 
@@ -23,103 +18,101 @@ destinations, generating itineraries, estimating budgets, and providing weather 
 Use the available tools to gather accurate information before making recommendations.
 Always provide practical, actionable travel advice tailored to the user's needs."""
 
-# Anthropic tool format
 TOOLS = [
-    {
-        "name": "search_destination",
-        "description": "Research a travel destination. Returns country, language, currency, timezone, top attractions, best areas to stay, and local tips.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "destination": {
-                    "type": "string",
-                    "description": "The destination city or country to research."
-                }
-            },
-            "required": ["destination"]
-        }
-    },
-    {
-        "name": "generate_itinerary",
-        "description": "Generate a detailed day-by-day travel itinerary. Accounts for flight duration, visa requirements, and arrival logistics based on origin.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "source": {
-                    "type": "string",
-                    "description": "Traveler's origin city or country (e.g. 'New York', 'London')."
-                },
-                "destination": {
-                    "type": "string",
-                    "description": "The destination city or country."
-                },
-                "days": {
-                    "type": "integer",
-                    "description": "Number of days for the trip."
-                },
-                "interests": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "List of traveler interests (e.g. ['food', 'history', 'hiking'])."
-                }
-            },
-            "required": ["source", "destination", "days", "interests"]
-        }
-    },
-    {
-        "name": "estimate_budget",
-        "description": "Estimate travel budget with a breakdown by category (accommodation, food, transport, activities).",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "destination": {
-                    "type": "string",
-                    "description": "The destination city or country."
-                },
-                "days": {
-                    "type": "integer",
-                    "description": "Number of days for the trip."
-                },
-                "travel_style": {
-                    "type": "string",
-                    "enum": ["budget", "mid-range", "luxury"],
-                    "description": "Travel style: budget, mid-range, or luxury."
-                }
-            },
-            "required": ["destination", "days", "travel_style"]
-        }
-    },
-    {
-        "name": "get_weather_info",
-        "description": "Get typical weather information for a destination in a given month for travel planning.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "destination": {
-                    "type": "string",
-                    "description": "The destination city or country."
-                },
-                "month": {
-                    "type": "string",
-                    "description": "The month of travel (e.g. 'January', 'July')."
-                }
-            },
-            "required": ["destination", "month"]
-        }
-    }
-]
-
-# OpenAI-compatible tool format for Ollama
-OPENAI_TOOLS = [
     {
         "type": "function",
         "function": {
-            "name": tool["name"],
-            "description": tool["description"],
-            "parameters": tool["input_schema"],
+            "name": "search_destination",
+            "description": "Research a travel destination. Returns country, language, currency, timezone, top attractions, best areas to stay, and local tips.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "destination": {
+                        "type": "string",
+                        "description": "The destination city or country to research."
+                    }
+                },
+                "required": ["destination"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "generate_itinerary",
+            "description": "Generate a detailed day-by-day travel itinerary. Accounts for flight duration, visa requirements, and arrival logistics based on origin.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "source": {
+                        "type": "string",
+                        "description": "Traveler's origin city or country (e.g. 'New York', 'London')."
+                    },
+                    "destination": {
+                        "type": "string",
+                        "description": "The destination city or country."
+                    },
+                    "days": {
+                        "type": "integer",
+                        "description": "Number of days for the trip."
+                    },
+                    "interests": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "List of traveler interests (e.g. ['food', 'history', 'hiking'])."
+                    }
+                },
+                "required": ["source", "destination", "days", "interests"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "estimate_budget",
+            "description": "Estimate travel budget with a breakdown by category (accommodation, food, transport, activities).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "destination": {
+                        "type": "string",
+                        "description": "The destination city or country."
+                    },
+                    "days": {
+                        "type": "integer",
+                        "description": "Number of days for the trip."
+                    },
+                    "travel_style": {
+                        "type": "string",
+                        "enum": ["budget", "mid-range", "luxury"],
+                        "description": "Travel style: budget, mid-range, or luxury."
+                    }
+                },
+                "required": ["destination", "days", "travel_style"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_weather_info",
+            "description": "Get typical weather information for a destination in a given month for travel planning.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "destination": {
+                        "type": "string",
+                        "description": "The destination city or country."
+                    },
+                    "month": {
+                        "type": "string",
+                        "description": "The month of travel (e.g. 'January', 'July')."
+                    }
+                },
+                "required": ["destination", "month"]
+            }
         }
     }
-    for tool in TOOLS
 ]
 
 
@@ -137,49 +130,16 @@ async def execute_tool(name: str, tool_input: dict) -> str:
     return json.dumps(result)
 
 
-async def _run_anthropic(client, prompt: str) -> str:
-    messages = [{"role": "user", "content": prompt}]
-    while True:
-        async with client.messages.stream(
-            model=ANTHROPIC_AGENT_MODEL,
-            max_tokens=8192,
-            thinking={"type": "adaptive"},
-            system=SYSTEM_PROMPT,
-            tools=TOOLS,
-            messages=messages,
-        ) as stream:
-            response = await stream.get_final_message()
-
-        if response.stop_reason == "end_turn":
-            return next((b.text for b in response.content if b.type == "text"), "")
-
-        tool_use_blocks = [b for b in response.content if b.type == "tool_use"]
-        if not tool_use_blocks:
-            return next((b.text for b in response.content if b.type == "text"), "")
-
-        messages.append({"role": "assistant", "content": response.content})
-        tool_results = []
-        for block in tool_use_blocks:
-            print(f"  [calling {block.name}...]", flush=True)
-            result = await execute_tool(block.name, block.input)
-            tool_results.append({
-                "type": "tool_result",
-                "tool_use_id": block.id,
-                "content": result,
-            })
-        messages.append({"role": "user", "content": tool_results})
-
-
-async def _run_ollama(client, prompt: str) -> str:
+async def _run_gemini(client, prompt: str) -> str:
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": prompt},
     ]
     while True:
         response = await client.chat.completions.create(
-            model=OLLAMA_MODEL,
+            model=GEMINI_MODEL,
             messages=messages,
-            tools=OPENAI_TOOLS,
+            tools=TOOLS,
         )
         choice = response.choices[0]
         tool_calls = choice.message.tool_calls
@@ -215,10 +175,7 @@ async def _run_ollama(client, prompt: str) -> str:
 
 async def run_agent(prompt: str) -> str:
     client = await get_async_client()
-    if PROVIDER == "anthropic":
-        return await _run_anthropic(client, prompt)
-    else:
-        return await _run_ollama(client, prompt)
+    return await _run_gemini(client, prompt)
 
 
 def main():

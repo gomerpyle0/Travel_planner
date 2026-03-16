@@ -1,9 +1,8 @@
 import json
 
-from llm_client import PROVIDER, get_sync_client, OLLAMA_MODEL, ANTHROPIC_TOOL_MODEL
+from llm_client import get_sync_client, GEMINI_MODEL
 
 client = get_sync_client()
-MODEL = ANTHROPIC_TOOL_MODEL if PROVIDER == "anthropic" else OLLAMA_MODEL
 
 
 async def get_weather_info(destination: str, month: str) -> dict:
@@ -43,18 +42,9 @@ Return a JSON object with:
 
 Respond in plain JSON only, no markdown."""
 
-    if PROVIDER == "anthropic":
-        response = client.messages.create(
-            model=MODEL,
-            max_tokens=1024,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        text = response.content[0].text.strip()
-    else:
-        response = client.chat.completions.create(
-            model=MODEL,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        text = response.choices[0].message.content.strip()
-
+    response = client.chat.completions.create(
+        model=GEMINI_MODEL,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    text = response.choices[0].message.content.strip()
     return json.loads(text)
