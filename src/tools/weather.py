@@ -1,9 +1,9 @@
-import anthropic
-from dotenv import load_dotenv
+import json
 
-load_dotenv()
+from llm_client import PROVIDER, get_sync_client, OLLAMA_MODEL, ANTHROPIC_TOOL_MODEL
 
-client = anthropic.Anthropic()
+client = get_sync_client()
+MODEL = ANTHROPIC_TOOL_MODEL if PROVIDER == "anthropic" else OLLAMA_MODEL
 
 
 async def get_weather_info(destination: str, month: str) -> dict:
@@ -43,12 +43,18 @@ Return a JSON object with:
 
 Respond in plain JSON only, no markdown."""
 
-    response = client.messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=1024,
-        messages=[{"role": "user", "content": prompt}],
-    )
+    if PROVIDER == "anthropic":
+        response = client.messages.create(
+            model=MODEL,
+            max_tokens=1024,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        text = response.content[0].text.strip()
+    else:
+        response = client.chat.completions.create(
+            model=MODEL,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        text = response.choices[0].message.content.strip()
 
-    import json
-    text = response.content[0].text.strip()
     return json.loads(text)

@@ -2,13 +2,18 @@ import asyncio
 import json
 import sys
 
-import anthropic
 from dotenv import load_dotenv
 
 from tools.destination import search_destination
 from tools.itinerary import generate_itinerary
 from tools.budget import estimate_budget
 from tools.weather import get_weather_info
+from llm_client import (
+    PROVIDER,
+    get_async_client,
+    OLLAMA_MODEL,
+    ANTHROPIC_AGENT_MODEL,
+)
 
 load_dotenv()
 
@@ -18,6 +23,7 @@ destinations, generating itineraries, estimating budgets, and providing weather 
 Use the available tools to gather accurate information before making recommendations.
 Always provide practical, actionable travel advice tailored to the user's needs."""
 
+# Anthropic tool format
 TOOLS = [
     {
         "name": "search_destination",
@@ -103,6 +109,19 @@ TOOLS = [
     }
 ]
 
+# OpenAI-compatible tool format for Ollama
+OPENAI_TOOLS = [
+    {
+        "type": "function",
+        "function": {
+            "name": tool["name"],
+            "description": tool["description"],
+            "parameters": tool["input_schema"],
+        }
+    }
+    for tool in TOOLS
+]
+
 
 async def execute_tool(name: str, tool_input: dict) -> str:
     if name == "search_destination":
@@ -118,13 +137,11 @@ async def execute_tool(name: str, tool_input: dict) -> str:
     return json.dumps(result)
 
 
-async def run_agent(prompt: str) -> str:
-    client = anthropic.AsyncAnthropic()
+async def _run_anthropic(client, prompt: str) -> str:
     messages = [{"role": "user", "content": prompt}]
-
     while True:
         async with client.messages.stream(
-            model="claude-opus-4-6",
+            model=ANTHROPIC_AGENT_MODEL,
             max_tokens=8192,
             thinking={"type": "adaptive"},
             system=SYSTEM_PROMPT,
@@ -134,20 +151,13 @@ async def run_agent(prompt: str) -> str:
             response = await stream.get_final_message()
 
         if response.stop_reason == "end_turn":
-            text = next(
-                (b.text for b in response.content if b.type == "text"), ""
-            )
-            return text
+            return next((b.text for b in response.content if b.type == "text"), "")
 
         tool_use_blocks = [b for b in response.content if b.type == "tool_use"]
         if not tool_use_blocks:
-            text = next(
-                (b.text for b in response.content if b.type == "text"), ""
-            )
-            return text
+            return next((b.text for b in response.content if b.type == "text"), "")
 
         messages.append({"role": "assistant", "content": response.content})
-
         tool_results = []
         for block in tool_use_blocks:
             print(f"  [calling {block.name}...]", flush=True)
@@ -157,8 +167,58 @@ async def run_agent(prompt: str) -> str:
                 "tool_use_id": block.id,
                 "content": result,
             })
-
         messages.append({"role": "user", "content": tool_results})
+
+
+async def _run_ollama(client, prompt: str) -> str:
+    messages = [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user", "content": prompt},
+    ]
+    while True:
+        response = await client.chat.completions.create(
+            model=OLLAMA_MODEL,
+            messages=messages,
+            tools=OPENAI_TOOLS,
+        )
+        choice = response.choices[0]
+        tool_calls = choice.message.tool_calls
+
+        if choice.finish_reason == "stop" or not tool_calls:
+            return choice.message.content or ""
+
+        messages.append({
+            "role": "assistant",
+            "content": choice.message.content,
+            "tool_calls": [
+                {
+                    "id": tc.id,
+                    "type": "function",
+                    "function": {
+                        "name": tc.function.name,
+                        "arguments": tc.function.arguments,
+                    },
+                }
+                for tc in tool_calls
+            ],
+        })
+
+        for tc in tool_calls:
+            print(f"  [calling {tc.function.name}...]", flush=True)
+            result = await execute_tool(tc.function.name, json.loads(tc.function.arguments))
+            messages.append({
+                "role": "tool",
+                "tool_call_id": tc.id,
+                "content": result,
+            })
+
+
+async def run_agent(prompt: str) -> str:
+    client = await get_async_client()
+    if PROVIDER == "anthropic":
+        return await _run_anthropic(client, prompt)
+    else:
+        return await _run_ollama(client, prompt)
 
 
 def main():
